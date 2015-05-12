@@ -1,0 +1,3 @@
+ciao <DIR>
+	ciaociao.txt 14 bytes Stringa ricercata presente.
+ciao.txt 55 bytes Stringa ricercata presente.
