@@ -1,14 +1,12 @@
-﻿Compilazione avviata 12/05/2015 12:31:06.
-     1>Progetto "C:\Users\Francesco\Documents\GitHub\Programmazione-di-sistema\PDS_lab3_thread\PDS_lab3_thread\PDS_lab3_thread.vcxproj" sul nodo 2 (destinazioni: Build).
+﻿Compilazione avviata 15/05/2015 14:31:52.
+     1>Progetto "C:\Users\Francesco\Documents\Programmazione-di-sistema\PDS_lab3_thread\PDS_lab3_thread\PDS_lab3_thread.vcxproj" sul nodo 2 (destinazioni: Build).
      1>ClCompile:
          C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\CL.exe /c /ZI /nologo /W3 /WX- /sdl /Od /Oy- /D WIN32 /D _DEBUG /D _CONSOLE /D _LIB /D _UNICODE /D UNICODE /Gm /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Yu"stdafx.h" /Fp"Debug\PDS_lab3_thread.pch" /Fo"Debug\\" /Fd"Debug\vc120.pdb" /Gd /TP /analyze- /errorReport:prompt PDS_lab3_thread.cpp
          PDS_lab3_thread.cpp
-       Link:
-         C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\link.exe /ERRORREPORT:PROMPT /OUT:"C:\Users\Francesco\Documents\GitHub\Programmazione-di-sistema\PDS_lab3_thread\Debug\PDS_lab3_thread.exe" /INCREMENTAL /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:\Users\Francesco\Documents\GitHub\Programmazione-di-sistema\PDS_lab3_thread\Debug\PDS_lab3_thread.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"C:\Users\Francesco\Documents\GitHub\Programmazione-di-sistema\PDS_lab3_thread\Debug\PDS_lab3_thread.lib" /MACHINE:X86 Debug\PDS_lab3_thread.obj
-         Debug\stdafx.obj
-         PDS_lab3_thread.vcxproj -> C:\Users\Francesco\Documents\GitHub\Programmazione-di-sistema\PDS_lab3_thread\Debug\PDS_lab3_thread.exe
-     1>Compilazione progetto "C:\Users\Francesco\Documents\GitHub\Programmazione-di-sistema\PDS_lab3_thread\PDS_lab3_thread\PDS_lab3_thread.vcxproj" (destinazioni: Build) completata.
+     1>c:\users\francesco\documents\programmazione-di-sistema\pds_lab3_thread\pds_lab3_thread\pds_lab3_thread.cpp(126): error C4996: 'wcscpy': This function or variable may be unsafe. Consider using wcscpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+                 c:\program files (x86)\microsoft visual studio 12.0\vc\include\wchar.h(1042): vedere la dichiarazione di 'wcscpy'
+     1>Compilazione progetto "C:\Users\Francesco\Documents\Programmazione-di-sistema\PDS_lab3_thread\PDS_lab3_thread\PDS_lab3_thread.vcxproj" (destinazioni: Build) NON COMPLETATA.
 
-Compilazione completata.
+Compilazione NON RIUSCITA.
 
-Tempo trascorso 00:00:01.03
+Tempo trascorso 00:00:04.17

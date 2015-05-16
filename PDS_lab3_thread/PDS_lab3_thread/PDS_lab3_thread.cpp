@@ -14,12 +14,26 @@
 #include <iterator>
 #include <string>
 
+#define MAX_THREAD 20
 
-int _wrapperFgrep(LPTSTR szDir, int tab, std::wfstream &outStream, LPTSTR search);
-int _Fgrep(TCHAR * fileHandle, TCHAR * search);
+struct ITHREAD{
+	HANDLE threads[MAX_THREAD];
+	DWORD count;
+};
+
+struct GREP_ARGS{
+	TCHAR * fileName;
+	TCHAR * search;
+	DWORD result;
+};
+
+int _wrapperFgrep(LPTSTR szDir, int tab, std::wfstream &outStream, LPTSTR search, struct ITHREAD &iThread);
+void _Fgrep(void *args);
 
 int _tmain(int argc, _TCHAR* argv[])
 {
+
+	struct ITHREAD iThread;
 	int result, tab = 0;
 	std::wfstream results;
 
@@ -44,7 +58,9 @@ int _tmain(int argc, _TCHAR* argv[])
 
 	//StringCchCopy(szDir, MAX_PATH, argv[1]);
 
-	result = _wrapperFgrep(argv[1], tab, results, argv[2]);
+	iThread.count = 0;
+
+	result = _wrapperFgrep(argv[1], tab, results, argv[2], iThread);
 
 	results.close();
 
@@ -55,7 +71,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	return 0;
 }
 
-int _wrapperFgrep(LPTSTR szDir, int tab, std::wfstream &outStream, LPTSTR search){
+int _wrapperFgrep(LPTSTR szDir, int tab, std::wfstream &outStream, LPTSTR search, struct ITHREAD &iThread){
 
 	HANDLE hFind = INVALID_HANDLE_VALUE;
 	LARGE_INTEGER filesize;
@@ -90,7 +106,7 @@ int _wrapperFgrep(LPTSTR szDir, int tab, std::wfstream &outStream, LPTSTR search
 				StringCchCopy(handleDirectory, MAX_PATH, szDir);
 				StringCchCat(handleDirectory, MAX_PATH, _T("\\"));
 				StringCchCat(handleDirectory, MAX_PATH, ffd.cFileName);
-				_wrapperFgrep(handleDirectory, tab + 1, outStream, search);
+				_wrapperFgrep(handleDirectory, tab + 1, outStream, search, iThread);
 			}
 			else
 			{
@@ -104,8 +120,23 @@ int _wrapperFgrep(LPTSTR szDir, int tab, std::wfstream &outStream, LPTSTR search
 				StringCchCopy(handleFile, MAX_PATH, szDir);
 				StringCchCat(handleFile, MAX_PATH, _T("\\"));
 				StringCchCat(handleFile, MAX_PATH, ffd.cFileName);
+				
+				struct GREP_ARGS args;
 
-				result = _Fgrep(handleFile, search);
+				_tcscpy(args.fileName, handleFile);
+				_tcscpy(args.search, search);
+
+				if (iThread.count>= MAX_THREAD){
+					if (WaitForMultipleObjects(iThread.count + 1, iThread.threads, FALSE, INFINITE) == WAIT_FAILED){
+						_tprintf(_T("error on wait threads.\n"));
+						exit(-1);
+					}
+					iThread.count--;
+				}
+
+				iThread.threads[iThread.count] =(HANDLE) _beginthread(_Fgrep, 0, (void *) &args );
+
+				iThread.count++;
 
 				if (result){
 					outStream << ffd.cFileName << _T(" ") << filesize.QuadPart << TEXT(" bytes ") << TEXT("Stringa ricercata presente.\n");
@@ -126,15 +157,16 @@ int _wrapperFgrep(LPTSTR szDir, int tab, std::wfstream &outStream, LPTSTR search
 
 //grep con FILENAME TCHAR
 
-int _Fgrep(TCHAR * fileName, TCHAR * search){
+void _Fgrep(void *args){
 
+	struct GREP_ARGS *FGArgs = (struct GREP_ARGS *) args;
 	std::wfstream inStream;
 	int find = 0;
 	std::wstring buff;
 
 
 	try{
-		inStream.open(fileName, std::wfstream::in);
+		inStream.open(FGArgs->fileName, std::wfstream::in);
 	}
 	catch (std::exception& e){
 		std::cout << e.what() << std::endl;
@@ -142,14 +174,15 @@ int _Fgrep(TCHAR * fileName, TCHAR * search){
 	}
 
 	while (std::getline(inStream, buff)){
-		if ((buff.find(search)) != std::string::npos){
+		if ((buff.find(FGArgs->search)) != std::string::npos){
 			inStream.close();
-			return 1;
+			FGArgs->result = 1;
+			return ;
 		}
 	}
 
 
 	inStream.close();
-
-	return 0;
+	FGArgs->result = 0;
+	return ;
 }
