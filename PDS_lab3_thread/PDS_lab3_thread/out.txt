@@ -1,1 +1,2 @@
-Invalid Handle value
+File name: C:\prova\ciao\pippo - Copia (7).txt.
+File name: C:\prova\ciao.txt - stringa presente.

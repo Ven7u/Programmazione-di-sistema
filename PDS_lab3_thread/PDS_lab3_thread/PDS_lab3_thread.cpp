@@ -13,33 +13,50 @@
 #include <iostream>
 #include <iterator>
 #include <string>
+#include <vector>
+#include <array>
 
 #define MAX_THREAD 20
+#define MAX_ARGS 100
 
-struct ITHREAD{
-	HANDLE threads[MAX_THREAD];
-	DWORD count;
-};
 
-struct GREP_ARGS{
-	TCHAR * fileName;
-	TCHAR * search;
+
+
+typedef struct {
+	TCHAR  fileName[MAX_PATH];
+	TCHAR  search[MAX_PATH];
 	DWORD result;
-};
+}ARGS;
 
-int _wrapperFgrep(LPTSTR szDir, int tab, std::wfstream &outStream, LPTSTR search, struct ITHREAD &iThread);
+void ErrorExit(LPTSTR lpszFunction);
+void _wrapperFgrep(LPTSTR szDir, LPTSTR search, std::vector<HANDLE> &threadHandles, std::vector<ARGS> &args);
 void _Fgrep(void *args);
 
 int _tmain(int argc, _TCHAR* argv[])
 {
 
-	struct ITHREAD iThread;
-	int result, tab = 0;
+	std::vector<ARGS> args;
+	std::vector<HANDLE> threadHandles;
 	std::wfstream results;
 
 	if (argc != 4){
 		_tprintf(_T("error on parameters.\n"));
 		exit(-1);
+	}
+
+
+	_wrapperFgrep(argv[1], argv[2], threadHandles, args);
+
+	
+
+	/*if (WaitForMultipleObjects(threadHandles.size(), threadHandles.data(), TRUE, INFINITE) == WAIT_FAILED){
+		ErrorExit(_T("pippo"));
+		exit(-1);
+	}*/
+
+	while (threadHandles.size() > 0){
+		WaitForSingleObject(threadHandles.back(), INFINITE);
+		threadHandles.pop_back();
 	}
 
 	try{
@@ -56,11 +73,17 @@ int _tmain(int argc, _TCHAR* argv[])
 	}
 
 
-	//StringCchCopy(szDir, MAX_PATH, argv[1]);
+	int i;
 
-	iThread.count = 0;
+	for (DWORD i = 0; i < args.size(); i++){
+		if (args[i].result == 1)
+			results << "File name: " << args[i].fileName << " - stringa presente." << std::endl;
+		else
+			results << "File name: " << args[i].fileName << "."<< std::endl;
 
-	result = _wrapperFgrep(argv[1], tab, results, argv[2], iThread);
+	}
+
+	//print results
 
 	results.close();
 
@@ -71,13 +94,13 @@ int _tmain(int argc, _TCHAR* argv[])
 	return 0;
 }
 
-int _wrapperFgrep(LPTSTR szDir, int tab, std::wfstream &outStream, LPTSTR search, struct ITHREAD &iThread){
+void _wrapperFgrep(LPTSTR szDir, LPTSTR search, std::vector<HANDLE> &threadHandles, std::vector<ARGS> &args){
 
 	HANDLE hFind = INVALID_HANDLE_VALUE;
 	LARGE_INTEGER filesize;
 	WIN32_FIND_DATA ffd;
 	WCHAR directoryName[MAX_PATH + 2], handleDirectory[MAX_PATH + 2], handleFile[MAX_PATH + 2];
-	int i, result;
+	int i;
 
 	StringCchCopy(directoryName, MAX_PATH, szDir);
 	StringCchCat(directoryName, MAX_PATH, TEXT("\\*"));
@@ -85,8 +108,8 @@ int _wrapperFgrep(LPTSTR szDir, int tab, std::wfstream &outStream, LPTSTR search
 
 	if (INVALID_HANDLE_VALUE == hFind)
 	{
-		outStream << TEXT("Invalid Handle value\n");
-		return -1;
+		std::cout << TEXT("Invalid Handle value\n");
+		exit(-1);
 	}
 
 	// List all the files in the directory with some info about them.
@@ -97,53 +120,39 @@ int _wrapperFgrep(LPTSTR szDir, int tab, std::wfstream &outStream, LPTSTR search
 
 			if (ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
 			{
-				for (i = 0; i<tab; i++){
-					outStream << TEXT("\t");
-				}
-
-				outStream << ffd.cFileName << TEXT(" <DIR>\n");
 				//ricorsivo sulle sottocartelle
 				StringCchCopy(handleDirectory, MAX_PATH, szDir);
 				StringCchCat(handleDirectory, MAX_PATH, _T("\\"));
 				StringCchCat(handleDirectory, MAX_PATH, ffd.cFileName);
-				_wrapperFgrep(handleDirectory, tab + 1, outStream, search, iThread);
+				_wrapperFgrep(handleDirectory, search, threadHandles, args);
 			}
 			else
 			{
-				for (i = 0; i<tab; i++){
-					outStream << TEXT("\t");
-				}
-
-				filesize.LowPart = ffd.nFileSizeLow;
-				filesize.HighPart = ffd.nFileSizeHigh;
 				//controllo all'interno del file
 				StringCchCopy(handleFile, MAX_PATH, szDir);
 				StringCchCat(handleFile, MAX_PATH, _T("\\"));
 				StringCchCat(handleFile, MAX_PATH, ffd.cFileName);
-				
-				struct GREP_ARGS args;
 
-				_tcscpy(args.fileName, handleFile);
-				_tcscpy(args.search, search);
-
-				if (iThread.count>= MAX_THREAD){
-					if (WaitForMultipleObjects(iThread.count + 1, iThread.threads, FALSE, INFINITE) == WAIT_FAILED){
-						_tprintf(_T("error on wait threads.\n"));
+				if (threadHandles.size()>= MAX_THREAD){
+					DWORD threadIndex;
+					WaitForSingleObject(threadHandles.back(), INFINITE);
+					threadHandles.pop_back();
+					/*if ((threadIndex = WaitForMultipleObjects(threadHandles.size(),threadHandles.data() , TRUE, INFINITE)) == WAIT_FAILED){
+						ErrorExit(_T("pippo"));
 						exit(-1);
-					}
-					iThread.count--;
+					}*/
+					// remove thread handle threadHandles.pop_back();
+					//threadHandles.erase(threadHandles.begin() + (threadIndex - WAIT_OBJECT_0));
 				}
 
-				iThread.threads[iThread.count] =(HANDLE) _beginthread(_Fgrep, 0, (void *) &args );
+				ARGS a;
+				StringCchCopy(a.fileName, MAX_PATH, handleFile);
+				StringCchCopy(a.search, MAX_PATH, search);
+				a.result = 0;
+				args.push_back(a);
 
-				iThread.count++;
+				threadHandles.push_back((HANDLE)_beginthread(_Fgrep, 0, (void *)&args.back()));
 
-				if (result){
-					outStream << ffd.cFileName << _T(" ") << filesize.QuadPart << TEXT(" bytes ") << TEXT("Stringa ricercata presente.\n");
-				}
-				else{
-					outStream << ffd.cFileName << _T(" ") << filesize.QuadPart << TEXT(" bytes\n");
-				}
 			}
 		}
 	} while (FindNextFile(hFind, &ffd) != 0);
@@ -152,18 +161,17 @@ int _wrapperFgrep(LPTSTR szDir, int tab, std::wfstream &outStream, LPTSTR search
 
 	FindClose(hFind);
 
-	return 0;
+	return ;
 };
 
 //grep con FILENAME TCHAR
 
 void _Fgrep(void *args){
 
-	struct GREP_ARGS *FGArgs = (struct GREP_ARGS *) args;
+	ARGS *FGArgs = (ARGS *) args;
 	std::wfstream inStream;
 	int find = 0;
 	std::wstring buff;
-
 
 	try{
 		inStream.open(FGArgs->fileName, std::wfstream::in);
@@ -180,9 +188,43 @@ void _Fgrep(void *args){
 			return ;
 		}
 	}
-
-
+	
 	inStream.close();
 	FGArgs->result = 0;
 	return ;
+}
+
+
+void ErrorExit(LPTSTR lpszFunction)
+{
+	// Retrieve the system error message for the last-error code
+
+	LPVOID lpMsgBuf;
+	//LPVOID lpDisplayBuf;
+	DWORD dw = GetLastError();
+
+	FormatMessage(
+		FORMAT_MESSAGE_ALLOCATE_BUFFER |
+		FORMAT_MESSAGE_FROM_SYSTEM |
+		FORMAT_MESSAGE_IGNORE_INSERTS,
+		NULL,
+		dw,
+		MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+		(LPTSTR)&lpMsgBuf,
+		0, NULL);
+
+	// Display the error message and exit the process
+
+	/*lpDisplayBuf = (LPVOID)LocalAlloc(LMEM_ZEROINIT,
+		(lstrlen((LPCTSTR)lpMsgBuf) + lstrlen((LPCTSTR)lpszFunction) + 40) * sizeof(TCHAR));*/
+	/*StringCchPrintf((LPTSTR)lpDisplayBuf,
+		LocalSize(lpDisplayBuf) / sizeof(TCHAR),
+		TEXT("%s failed with error %d: %s"),
+		lpszFunction, dw, lpMsgBuf);*/
+	std::cout << (LPTSTR)lpMsgBuf << std::endl;
+	//MessageBox(NULL, (LPCTSTR)lpDisplayBuf, TEXT("Error"), MB_OK);
+
+	LocalFree(lpMsgBuf);
+	//LocalFree(lpDisplayBuf);
+	return;
 }
